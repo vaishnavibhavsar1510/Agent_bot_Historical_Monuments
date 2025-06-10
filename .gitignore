@@ -25,9 +25,12 @@ __pycache__/
 
 # Ignore data files that might be too large
 *.csv
-*.json
+# *.json  # Commenting this out to allow specific JSON files
 *.db
 *.sqlite3
+
+# Explicitly include monuments.json
+!data/monuments.json
 
 # Ignore logs
 *.log

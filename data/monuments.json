@@ -1,0 +1,17 @@
+[
+  {
+    "name": "Taj Mahal",
+    "location": "Agra, India",
+    "description": "A UNESCO World Heritage Site, the Taj Mahal is an ivory-white marble mausoleum built by Mughal emperor Shah Jahan in memory of his wife Mumtaz Mahal."
+  },
+  {
+    "name": "Eiffel Tower",
+    "location": "Paris, France",
+    "description": "A wrought-iron lattice tower on the Champ de Mars, the Eiffel Tower is one of the most recognizable structures in the world."
+  },
+  {
+    "name": "Great Wall of China",
+    "location": "China",
+    "description": "A series of fortifications made of stone, brick, tamped earth, wood, and other materials, built along the historical northern borders of China."
+  }
+]
