@@ -1,0 +1,9 @@
+[theme]
+primaryColor = "#008080" # A shade of teal
+backgroundColor = "#008080" # Dark teal for the main background (though overridden by gradient in app.py)
+secondaryBackgroundColor = "#000000" # Set to pure black for maximum contrast
+textColor = "#FFFFFF" # White text for better visibility
+base = "dark"
+
+[global]
+cookieWarning = false 

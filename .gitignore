@@ -1,0 +1,34 @@
+# Ignore Node.js modules and build artifacts
+node_modules/
+.next/
+
+# Ignore Python virtual environment
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore environment variable files
+.env
+.env.*
+
+# Ignore any local IDE or OS specific files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Ignore Streamlit specific files
+.streamlit/secrets.toml
+
+# Ignore data files that might be too large
+*.csv
+*.json
+*.db
+*.sqlite3
+
+# Ignore logs
+*.log
+logs/ 
