@@ -7,7 +7,7 @@ with e-mail + OTP verification flow.
 from __future__ import annotations
 
 import logging
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import re
 
 from pydantic import BaseModel, Field
@@ -58,6 +58,33 @@ class ChatState(BaseModel):
     last_monument_query: Optional[str] = None
     initial_response_sent: bool = False
     awaiting_user_choice: bool = False
+    query_history: List[str] = Field(default_factory=list)
+
+    # Custom serialization/deserialization for messages
+    @classmethod
+    def model_dump_json_schema(cls, by_alias: bool = False, exclude_unset: bool = False) -> Dict[str, Any]:
+        schema = super().model_dump_json_schema(by_alias=by_alias, exclude_unset=exclude_unset)
+        # Ensure messages are represented as a list of dicts for serialization
+        schema["properties"]["messages"]["items"] = {"type": "object"}
+        return schema
+
+    @classmethod
+    def model_validate(cls, data: Any, context: Any = None) -> "ChatState":
+        if isinstance(data, dict) and "messages" in data and isinstance(data["messages"], list):
+            # Convert dictionary messages back to BaseMessage objects
+            reconstructed_messages = []
+            for msg_data in data["messages"]:
+                if isinstance(msg_data, dict):
+                    if msg_data.get("type") == "human":
+                        reconstructed_messages.append(HumanMessage(content=msg_data.get("content", "")))
+                    elif msg_data.get("type") == "ai":
+                        reconstructed_messages.append(AIMessage(content=msg_data.get("content", "")))
+                    # Add other message types if necessary
+                else:
+                    # If it's already a BaseMessage, append it directly
+                    reconstructed_messages.append(msg_data)
+            data["messages"] = reconstructed_messages
+        return super().model_validate(data, context=context)
 
 # --------------------------------------------------------------------------- #
 #  Node: process_user_input
@@ -79,6 +106,8 @@ def process_user_input(state: ChatState) -> ChatState:
     # Record message if present
     if state.user_input:
         state.messages.append(HumanMessage(content=state.user_input))
+        # Store user query in query_history
+        state.query_history.append(state.user_input)
 
     # Handle user choice if awaiting it
     if state.awaiting_user_choice:
@@ -177,9 +206,13 @@ def check_query_type(state: ChatState) -> ChatState:
             recent_chat_history += f"AI: {msg.content}\n"
 
     # Emphasize the historical monument context and how to handle follow-ups
-    prompt_instruction = """You are an AI assistant specialized in historical monuments. Your task is to classify user queries into 'MONUMENT' or 'GENERAL'.
+    prompt_instruction = """You are an AI assistant specialized in historical monuments. Your task is to classify user queries into 'MONUMENT', 'GENERAL', 'QUERY_HISTORY', or 'GREETING_FAREWELL'.
 
     **CRITICAL**: You MUST use the *Recent Chat History* to understand the context. If the *Current user question* is a follow-up related to any historical monument or its associated travel/logistical details that have been discussed in the *Recent Chat History* (even if it uses pronouns like 'them' or 'it'), or if the query asks about historical monuments or places to visit in a specific country (e.g., "monuments in Japan", "places to visit in Italy"), you MUST classify it as 'MONUMENT'.
+
+    Classify as 'QUERY_HISTORY' if the *Current user question* is explicitly asking about past queries or the conversation history (e.g., "Which was my previous query?", "What have I asked so far?", "Summarize our conversation").
+
+    Classify as 'GREETING_FAREWELL' if the *Current user question* is a simple greeting or farewell (e.g., "Hi", "Hello", "Good Morning", "Good Bye", "Thank you").
 
     Only classify as 'GENERAL' if the *Current user question* is unequivocally unrelated to historical monuments or their associated travel/logistics, or if there is no prior historical monument context in the conversation.
     """
@@ -197,6 +230,23 @@ def check_query_type(state: ChatState) -> ChatState:
   - 'monuments in Japan' (query about monuments in a specific country)
   - 'places to visit in Italy' (query about places to visit in a specific country)
 
+Examples of QUERY_HISTORY queries:
+  - 'Which was my previous query?'
+  - 'What did I ask last?'
+  - 'Can you tell me my past questions?'
+  - 'Summarize our conversation'
+
+Examples of GREETING_FAREWELL queries:
+  - 'Hi'
+  - 'Hello'
+  - 'Hey there'
+  - 'Good Morning'
+  - 'Good Evening'
+  - 'Thank you'
+  - 'Welcome'
+  - 'Good Bye'
+  - 'Bye'
+
 Examples of GENERAL queries:
   - 'How to improve a tennis game?' (irrelevant)
   - 'What's the weather today?' (irrelevant)
@@ -208,7 +258,7 @@ Examples of GENERAL queries:
         f"Recent Chat History:\n{recent_chat_history}\n"
         f"Current user question: {query}\n\n"
         f"{query_examples}\n\n"
-        "Your response must be only 'MONUMENT' or 'GENERAL'."
+        "Your response must be only 'MONUMENT', 'GENERAL', 'QUERY_HISTORY', or 'GREETING_FAREWELL'."
     )
 
     classification = llm.invoke(full_prompt).content.strip().upper()
@@ -219,6 +269,14 @@ Examples of GENERAL queries:
         # Update last_monument_query with the current query if it's a monument query
         state.last_monument_query = query
         state.next_step = "generate_monument_response"
+    elif "QUERY_HISTORY" in classification:
+        query_type = "QUERY_HISTORY"
+        logger.info(f"LLM classified query '{query}' as QUERY_HISTORY.")
+        state.next_step = "generate_query_history_response"
+    elif "GREETING_FAREWELL" in classification:
+        query_type = "GREETING_FAREWELL"
+        logger.info(f"LLM classified query '{query}' as GREETING_FAREWELL.")
+        state.next_step = "generate_greeting_farewell_response"
     else:
         query_type = "GENERAL"
         logger.info(f"LLM classified query '{query}' as GENERAL.")
@@ -299,6 +357,79 @@ def process_otp_input(state: ChatState) -> ChatState:
 
     state.response = msg
     state.messages.append(AIMessage(content=msg))
+    return state
+
+
+def generate_query_history_response(state: ChatState) -> ChatState:
+    """
+    Generates a response summarizing the user's query history.
+    """
+    history = list(state.query_history) # Create a copy to modify
+
+    # Define the set of meta-query patterns (using regex for flexibility and case-insensitivity)
+    meta_query_patterns = [
+        r"last(?: \d+)? queries\??$", # "last queries", "last 3 queries", "last few queries" (ends with queries)
+        r"previous(?: \d+)? queries\??$",
+        r"past questions\??$",
+        r"summarize our conversation\??$",
+        r"query history\??$",
+        r"conversation history\??$",
+        r"my last queries\??$",
+        r"tell me my history\??$",
+        r"show my history\??$",
+        r"can you tell me my past questions\??$",
+        r"list my previous questions\??$",
+    ]
+
+    # The current query (that triggered this function) is the last one added to state.query_history.
+    # We should exclude it from the history displayed to the user if it's a meta-query.
+    queries_to_consider = []
+    if history:
+        current_query_text = history[-1].strip().lower()
+        is_current_query_meta = False
+        for pattern in meta_query_patterns:
+            if re.search(pattern, current_query_text):
+                is_current_query_meta = True
+                break
+        
+        # If the current query is a meta-query, don't include it in the queries to be summarized
+        if is_current_query_meta:
+            queries_to_consider = history[:-1] # Exclude the very last query
+        else:
+            queries_to_consider = history # Include all if last one is not a meta-query
+    
+    # Now, filter out any *other* meta-queries that might be in the history
+    cleaned_history_for_display = []
+    for q in queries_to_consider:
+        is_meta_query_in_history = False
+        for pattern in meta_query_patterns:
+            if re.search(pattern, q.strip().lower()):
+                is_meta_query_in_history = True
+                break
+        if not is_meta_query_in_history:
+            cleaned_history_for_display.append(q)
+
+    # Ensure uniqueness and get the last 3 content-related queries
+    distinct_final_queries = []
+    seen_queries = set()
+    for q in reversed(cleaned_history_for_display):
+        if q not in seen_queries:
+            distinct_final_queries.insert(0, q)
+            seen_queries.add(q)
+    
+    last_three_queries = distinct_final_queries[-3:] if distinct_final_queries else []
+
+    if last_three_queries:
+        summary = "Here is a summary of your last " + str(len(last_three_queries)) + " queries:\n"
+        for i, query in enumerate(last_three_queries):
+            summary += f"{i+1}. {query}\n"
+        reply = summary
+    else:
+        reply = "You haven't asked any contentful questions yet in this conversation."
+    
+    state.messages.append(AIMessage(content=reply))
+    state.response = reply
+    state.next_step = END
     return state
 
 
@@ -395,6 +526,28 @@ def handle_user_choice(state: ChatState) -> ChatState:
     state.messages.append(AIMessage(content=msg))
     return state
 
+
+def generate_greeting_farewell_response(state: ChatState) -> ChatState:
+    """
+    Generates an appropriate greeting or farewell response.
+    """
+    user_input = state.messages[-1].content.lower()
+    reply = ""
+
+    if any(g in user_input for g in ["hi", "hello", "hey", "good morning", "good evening"]):
+        reply = "Hello! How can I assist you today?"
+    elif any(f in user_input for f in ["thank you", "thanks"]):
+        reply = "You're welcome! Is there anything else I can help you with?"
+    elif any(f in user_input for f in ["good bye", "bye"]):
+        reply = "Goodbye! Have a great day!"
+    else:
+        reply = "Hello! How can I assist you today?" # Default greeting if not recognized
+
+    state.messages.append(AIMessage(content=reply))
+    state.response = reply
+    state.next_step = END
+    return state
+
 # --------------------------------------------------------------------------- #
 # Build & compile graph
 # --------------------------------------------------------------------------- #
@@ -411,6 +564,8 @@ graph.add_node("end_conversation", end_conversation)
 graph.add_node("initial_greeting_node", initial_greeting_node)
 graph.add_node("handle_user_choice", handle_user_choice)
 graph.add_node("generate_monument_response", generate_monument_response)
+graph.add_node("generate_query_history_response", generate_query_history_response)
+graph.add_node("generate_greeting_farewell_response", generate_greeting_farewell_response)
 
 graph.set_entry_point("process_user_input")
 
@@ -432,6 +587,8 @@ graph.add_conditional_edges(
     {
         "generate_monument_response": "generate_monument_response",
         "generate_non_monument_response": "generate_non_monument_response",
+        "generate_query_history_response": "generate_query_history_response",
+        "generate_greeting_farewell_response": "generate_greeting_farewell_response",
     },
 )
 graph.add_edge("generate_non_monument_response", END)
@@ -446,6 +603,8 @@ graph.add_edge("end_conversation", END)
 graph.add_edge("initial_greeting_node", END)
 graph.add_edge("handle_user_choice", END)
 graph.add_edge("generate_monument_response", END)
+graph.add_edge("generate_query_history_response", END)
+graph.add_edge("generate_greeting_farewell_response", END)
 
 compiled_chat_graph = graph.compile()
 
