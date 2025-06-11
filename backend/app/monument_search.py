@@ -16,6 +16,10 @@ from langchain.chains import RetrievalQA
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
 
+# New imports for conversational memory
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationalRetrievalChain
+
 # ── Locate data/monuments.json ──────────────────────────────────────────────
 ROOT_DIR  = Path(__file__).resolve().parents[2]
 DATA_PATH = ROOT_DIR / "data" / "monuments.json"
@@ -36,7 +40,7 @@ def _load_monuments() -> list[dict]:
 
 # ── Cache FAISS index + RetrievalQA chain ───────────────────────────────────
 @st.cache_resource(show_spinner="🔧 Building FAISS index…")
-def _build_qa_chain() -> RetrievalQA:
+def _build_qa_chain() -> ConversationalRetrievalChain:
     monuments  = _load_monuments()
     texts      = [m["description"] for m in monuments]
     metadatas  = [{"name": m["name"], "location": m["location"]} for m in monuments]
@@ -49,13 +53,18 @@ def _build_qa_chain() -> RetrievalQA:
     )
     retriever = vs.as_retriever()
 
-    return RetrievalQA.from_chain_type(
+    # Initialize ConversationBufferMemory
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+
+    # Use ConversationalRetrievalChain
+    return ConversationalRetrievalChain.from_llm(
         llm=ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, api_key=key),
         retriever=retriever,
+        memory=memory,
     )
 
 # ── Public helper for Streamlit UI ──────────────────────────────────────────
-def answer_monument_query(query: str) -> str | None:
+def answer_monument_query(query: str, chat_history: list) -> str | None:
     """
     Return a concise answer for *query* using the monument knowledge base.
     Returns None if no specific information is found.
@@ -63,9 +72,10 @@ def answer_monument_query(query: str) -> str | None:
     qa_chain = _build_qa_chain()
 
     try:
-        result = qa_chain.invoke({"query": query})
+        # Pass chat_history to the conversational chain
+        result = qa_chain.invoke({"question": query, "chat_history": chat_history})
     except TypeError:
-        result = qa_chain.invoke(query)
+        result = qa_chain.invoke({"question": query, "chat_history": chat_history})
 
     response_text = ""
     if isinstance(result, dict):

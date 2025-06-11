@@ -136,7 +136,7 @@ def generate_monument_response(state: ChatState) -> ChatState:
     query = state.last_monument_query
     logger.info(f"Generating monument response for query: {query}")
     if query:
-        answer = answer_monument_query(query)
+        answer = answer_monument_query(query, state.messages)
         if answer:
             reply = (
                 answer
@@ -271,7 +271,7 @@ def final_confirmation(state: ChatState) -> ChatState:
     if monument_query:
         # Attempt to get the monument answer
         try:
-            monument_answer = answer_monument_query(monument_query)
+            monument_answer = answer_monument_query(monument_query, state.messages)
             logger.info("Found monument answer for email: %s", monument_answer)
         except Exception as e:
             logger.error("Error searching for monument details for email: %s", e)
