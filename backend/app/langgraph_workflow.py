@@ -152,7 +152,7 @@ def generate_monument_response(state: ChatState) -> ChatState:
         reply = "I'm sorry, I don't have enough information to answer that monument query."
         state.messages.append(AIMessage(content=reply))
         state.response = reply
-    state.next_step = END
+    state.next_step = "check_query_type"
     return state
 
 
