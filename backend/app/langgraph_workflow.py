@@ -182,16 +182,14 @@ def generate_non_monument_response(state: ChatState) -> ChatState:
     question = state.messages[-1].content
     prompt = (
         f"The user asked: {question}\n"
-        "You are a helpful travel assistant specializing in historical monuments. Your goal is to provide useful and direct travel advice. "
-        "If the query is about general travel planning (e.g., 'places to visit in X country', 'things to do in Y city'), act as a travel guide. Provide a concise list of actionable general suggestions for that location based on common knowledge, covering categories like historical sites (if applicable and generally known), cultural experiences, natural attractions, or local activities. DO NOT decline to answer by stating you don't have information. Always provide some relevant information if the query is about travel. "
-        "Under NO circumstances should you mention or list specific historical monuments (like Taj Mahal, Eiffel Tower, Great Wall of China, etc.) unless they are *directly* relevant to the user's query. You must NEVER refer to your internal search processes or say you couldn't find a match. "
-        "Your goal is always to be helpful and informative with general travel advice, even if specific monument data is unavailable. Focus solely on providing a helpful answer to the user's question. If you cannot provide specific details, always provide a general but still helpful travel tip related to the location or historical travel."
+        "You are a helpful chatbot specializing only in historical monuments. "
+        "Your goal is to politely inform the user that you can only answer questions about historical monuments "
+        "and ask them to rephrase their question to be about a historical monument. "
+        "DO NOT attempt to answer questions that are not about historical monuments. "
+        "Your response should be concise and clearly redirect the user."
     )
     answer = llm.invoke(prompt).content
-    reply = (
-        answer
-        + " If you'd like more details e-mailed to you, please feel free to provide your email address in the chat."
-    )
+    reply = answer
     state.messages.append(AIMessage(content=reply))
     state.response = reply
     state.next_step = END
