@@ -301,6 +301,7 @@ def initial_greeting_node(state: ChatState) -> ChatState:
     """
     Generates the initial greeting message and sets initial_response_sent to True.
     """
+    
     msg = "Hello! How can I assist you today?"
     state.messages.append(AIMessage(content=msg))
     state.response = msg
@@ -352,6 +353,7 @@ graph.add_conditional_edges(
         "send_otp": "send_otp",
         "process_otp_input": "process_otp_input",
         "check_query_type": "check_query_type",
+        "initial_greeting_node": "initial_greeting_node",
         "handle_user_choice": "handle_user_choice",
         END: END,
     },
@@ -372,6 +374,7 @@ graph.add_conditional_edges(
 )
 graph.add_edge("final_confirmation", END)
 graph.add_edge("end_conversation", END)
+graph.add_edge("initial_greeting_node", END)
 
 compiled_chat_graph = graph.compile()
 
