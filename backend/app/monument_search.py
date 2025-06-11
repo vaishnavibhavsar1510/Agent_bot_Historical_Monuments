@@ -19,6 +19,11 @@ from langchain_community.vectorstores import FAISS
 # New imports for conversational memory
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
+from langchain.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+)
 
 # ── Locate data/monuments.json ──────────────────────────────────────────────
 ROOT_DIR  = Path(__file__).resolve().parents[2]
@@ -56,11 +61,30 @@ def _build_qa_chain() -> ConversationalRetrievalChain:
     # Initialize ConversationBufferMemory
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-    # Use ConversationalRetrievalChain
+    # Initialize ChatOpenAI instance
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, api_key=key)
+
+    # Custom prompt for the ConversationalRetrievalChain's combine_docs_chain
+    system_template = """You are an AI assistant specialized in historical monuments. Given the following conversation and a follow-up question, answer the question concisely and accurately based ONLY on the provided context. If the question refers to 'them' or 'it', infer the specific monument(s) from the chat history and answer strictly about those. Do NOT mention monuments or locations not explicitly discussed or relevant to the immediate context. If the question is about visiting multiple places, provide a realistic assessment based on travel times and locations. If you cannot answer the question from the given context, say 'I couldn't find specific information for that query within the current conversation scope.'
+
+Chat History:
+{chat_history}
+Question: {question}
+Context: {context}
+Answer:"""
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(system_template),
+        HumanMessagePromptTemplate.from_template("{question}"),
+    ]
+    qa_prompt = ChatPromptTemplate.from_messages(messages)
+
+    # Use ConversationalRetrievalChain with custom prompt for combine_docs_chain
     return ConversationalRetrievalChain.from_llm(
-        llm=ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, api_key=key),
+        llm=llm,
         retriever=retriever,
         memory=memory,
+        combine_docs_chain_kwargs={"prompt": qa_prompt} # Pass the custom prompt here
     )
 
 # ── Public helper for Streamlit UI ──────────────────────────────────────────
