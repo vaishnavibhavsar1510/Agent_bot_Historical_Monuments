@@ -133,9 +133,10 @@ def generate_monument_response(state: ChatState) -> ChatState:
     """
     Generates a response for a monument-related query.
     """
-    query = state.last_monument_query
+    query = state.messages[-1].content # Always use the current user input as the query for answer_monument_query
     logger.info(f"Generating monument response for query: {query}")
     if query:
+        # Ensure answer_monument_query uses the current last_monument_query (which might be rephrased)
         answer = answer_monument_query(query, state.messages)
         if answer:
             reply = (
@@ -145,7 +146,14 @@ def generate_monument_response(state: ChatState) -> ChatState:
             state.messages.append(AIMessage(content=reply))
             state.response = reply
         else:
-            reply = "I couldn't find information for that specific monument. Please try another query."
+            # If answer is empty, it means no specific information was found for the query
+            reply = (
+                "I couldn't find specific information for that location in my current knowledge base. "
+                "However, I can still assist you with general information about other well-known historical monuments "
+                "like the Taj Mahal, Eiffel Tower, or the Great Wall of China. "
+                "If you'd like more details e-mailed to you for these or other known monuments, "
+                "please feel free to provide your email address in the chat."
+            )
             state.messages.append(AIMessage(content=reply))
             state.response = reply
     else:
@@ -158,23 +166,63 @@ def generate_monument_response(state: ChatState) -> ChatState:
 
 def check_query_type(state: ChatState) -> ChatState:
     query = state.messages[-1].content if state.messages else ""
+    last_monument_query = state.last_monument_query
 
-    # Rule-based classification for queries
-    if re.search(r"(?:places to visit|best places to visit|what to see|suggest (?:me|some) places) in\s+(\w+\s*)+", query, re.IGNORECASE) or \
-       re.search(r"(?:monuments|historical sites|landmarks)", query, re.IGNORECASE):
+    recent_chat_history = ""
+    # Get last 4 messages (2 human, 2 AI) for context, or fewer if not available
+    for msg in state.messages[-4:]:
+        if isinstance(msg, HumanMessage):
+            recent_chat_history += f"Human: {msg.content}\n"
+        elif isinstance(msg, AIMessage):
+            recent_chat_history += f"AI: {msg.content}\n"
+
+    # Emphasize the historical monument context and how to handle follow-ups
+    prompt_instruction = """You are an AI assistant specialized in historical monuments. Your task is to classify user queries into 'MONUMENT' or 'GENERAL'.
+
+    **CRITICAL**: You MUST use the *Recent Chat History* to understand the context. If the *Current user question* is a follow-up related to any historical monument or its associated travel/logistical details that have been discussed in the *Recent Chat History* (even if it uses pronouns like 'them' or 'it'), or if the query asks about historical monuments or places to visit in a specific country (e.g., "monuments in Japan", "places to visit in Italy"), you MUST classify it as 'MONUMENT'.
+
+    Only classify as 'GENERAL' if the *Current user question* is unequivocally unrelated to historical monuments or their associated travel/logistics, or if there is no prior historical monument context in the conversation.
+    """
+
+    query_examples = """Examples of MONUMENT queries:
+  - 'Tell me about the Eiffel Tower' (direct monument query)
+  - 'Can I visit them within a week time' (if 'them' refers to previously discussed monuments)
+  - 'What's the history of Taj Mahal' (direct monument query)
+  - 'How far is it from Paris?' (if a monument in Paris was previously discussed)
+  - 'When are they open?' (contextual follow-up about monument operating hours)
+  - 'How much does it cost to enter?' (contextual follow-up about monument entry fees)
+  - 'Are they wheelchair accessible?' (contextual follow-up about monument accessibility)
+  - 'What are the best times to visit them?' (contextual follow-up about monument visiting times)
+  - 'How long does it take to visit them?' (contextual follow-up about monument visit duration)
+  - 'monuments in Japan' (query about monuments in a specific country)
+  - 'places to visit in Italy' (query about places to visit in a specific country)
+
+Examples of GENERAL queries:
+  - 'How to improve a tennis game?' (irrelevant)
+  - 'What's the weather today?' (irrelevant)
+  - 'Tell me a joke' (irrelevant)
+"""
+
+    full_prompt = (
+        f"{prompt_instruction}\n\n"
+        f"Recent Chat History:\n{recent_chat_history}\n"
+        f"Current user question: {query}\n\n"
+        f"{query_examples}\n\n"
+        "Your response must be only 'MONUMENT' or 'GENERAL'."
+    )
+
+    classification = llm.invoke(full_prompt).content.strip().upper()
+
+    if "MONUMENT" in classification:
         query_type = "MONUMENT"
-        logger.info(f"Rule-based classification: Query '{query}' forced to MONUMENT.")
+        logger.info(f"LLM classified query '{query}' as MONUMENT.")
+        # Update last_monument_query with the current query if it's a monument query
+        state.last_monument_query = query
+        state.next_step = "generate_monument_response"
     else:
         query_type = "GENERAL"
-        logger.info(f"Rule-based classification: Query '{query}' classified as GENERAL.")
-
-    if query_type == "MONUMENT":
-        state.last_monument_query = query # Store the original query for generate_monument_response
-        state.next_step = "generate_monument_response"
-        logger.info("Monument query detected → generate_monument_response")
-    else: # Default to general if not explicitly monument
+        logger.info(f"LLM classified query '{query}' as GENERAL.")
         state.next_step = "generate_non_monument_response"
-        logger.info(f"General query detected for query: '{query}'.")
     return state
 
 
