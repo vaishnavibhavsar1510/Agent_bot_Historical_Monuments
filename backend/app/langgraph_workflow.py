@@ -1,3 +1,4 @@
+# This is a test comment to force a file refresh.
 """
 LangGraph state-machine for the historical-monument chatbot
 with e-mail + OTP verification flow.
@@ -128,6 +129,33 @@ def process_user_input(state: ChatState) -> ChatState:
 #  Remaining nodes (monument flow, OTP flow, etc.)
 # --------------------------------------------------------------------------- #
 
+def generate_monument_response(state: ChatState) -> ChatState:
+    """
+    Generates a response for a monument-related query.
+    """
+    query = state.last_monument_query
+    logger.info(f"Generating monument response for query: {query}")
+    if query:
+        answer = answer_monument_query(query)
+        if answer:
+            reply = (
+                answer
+                + " If you'd like more details e-mailed to you, please feel free to provide your email address in the chat."
+            )
+            state.messages.append(AIMessage(content=reply))
+            state.response = reply
+        else:
+            reply = "I couldn't find information for that specific monument. Please try another query."
+            state.messages.append(AIMessage(content=reply))
+            state.response = reply
+    else:
+        reply = "I'm sorry, I don't have enough information to answer that monument query."
+        state.messages.append(AIMessage(content=reply))
+        state.response = reply
+    state.next_step = END
+    return state
+
+
 def check_query_type(state: ChatState) -> ChatState:
     query = state.messages[-1].content if state.messages else ""
 
@@ -141,16 +169,9 @@ def check_query_type(state: ChatState) -> ChatState:
         logger.info(f"Rule-based classification: Query '{query}' classified as GENERAL.")
 
     if query_type == "MONUMENT":
-        monument_answer = answer_monument_query(query)
-        if monument_answer:
-            state.response = monument_answer
-            state.messages.append(AIMessage(content=monument_answer))
-            state.next_step = END
-            logger.info("Monument found and answered directly.")
-        else:
-            # If monument search yields no results, fall back to general response
-            state.next_step = "generate_non_monument_response"
-            logger.info(f"No specific monument match for '{query}', falling back to general response.")
+        state.last_monument_query = query # Store the original query for generate_monument_response
+        state.next_step = "generate_monument_response"
+        logger.info("Monument query detected → generate_monument_response")
     else: # Default to general if not explicitly monument
         state.next_step = "generate_non_monument_response"
         logger.info(f"General query detected for query: '{query}'.")
@@ -343,6 +364,7 @@ graph.add_node("final_confirmation", final_confirmation)
 graph.add_node("end_conversation", end_conversation)
 graph.add_node("initial_greeting_node", initial_greeting_node)
 graph.add_node("handle_user_choice", handle_user_choice)
+graph.add_node("generate_monument_response", generate_monument_response)
 
 graph.set_entry_point("process_user_input")
 
@@ -362,6 +384,7 @@ graph.add_conditional_edges(
     "check_query_type",
     lambda s: s.next_step,
     {
+        "generate_monument_response": "generate_monument_response",
         "generate_non_monument_response": "generate_non_monument_response",
     },
 )
@@ -375,6 +398,8 @@ graph.add_conditional_edges(
 graph.add_edge("final_confirmation", END)
 graph.add_edge("end_conversation", END)
 graph.add_edge("initial_greeting_node", END)
+graph.add_edge("handle_user_choice", END)
+graph.add_edge("generate_monument_response", END)
 
 compiled_chat_graph = graph.compile()
 
