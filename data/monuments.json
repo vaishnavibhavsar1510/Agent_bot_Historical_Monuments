@@ -13,5 +13,140 @@
     "name": "Great Wall of China",
     "location": "China",
     "description": "A series of fortifications made of stone, brick, tamped earth, wood, and other materials, built along the historical northern borders of China."
+  },
+  {
+    "name": "Kinkaku-ji (Golden Pavilion)",
+    "location": "Kyoto, Japan",
+    "description": "A Zen Buddhist temple in northern Kyoto whose top two floors are completely covered in gold leaf. It is one of the most popular buildings in Kyoto."
+  },
+  {
+    "name": "Fushimi Inari-taisha",
+    "location": "Kyoto, Japan",
+    "description": "An important Shinto shrine in southern Kyoto, famous for its thousands of vermilion torii gates, which straddle a network of trails leading into the wooded mountain Inari."
+  },
+  {
+    "name": "Tokyo Tower",
+    "location": "Tokyo, Japan",
+    "description": "A communications and observation tower in the Shiba-koen district of Minato, Tokyo, Japan. At 332.9 meters (1,092 ft), it is the second-tallest structure in Japan."
+  },
+  {
+    "name": "Colosseum",
+    "location": "Rome, Italy",
+    "description": "An oval amphitheatre in the centre of the city of Rome, Italy. Built of travertine limestone, tuff, and brick-faced concrete, it was the largest amphitheatre ever built."
+  },
+  {
+    "name": "Leaning Tower of Pisa",
+    "location": "Pisa, Italy",
+    "description": "The campanile, or freestanding bell tower, of the cathedral of Pisa, Italy. It is known for its unintended tilt to one side."
+  },
+  {
+    "name": "St. Peter's Basilica",
+    "location": "Vatican City",
+    "description": "A church built in the Renaissance style located in Vatican City, the papal enclave that is within the city of Rome. It is the most renowned work of Renaissance architecture."
+  },
+  {
+    "name": "Pyramids of Giza",
+    "location": "Giza, Egypt",
+    "description": "Ancient pyramids located in the Giza Necropolis on the Giza Plateau, in the outskirts of Cairo, Egypt. They were built for the pharaohs Khufu, Khafre, and Menkaure."
+  },
+  {
+    "name": "Great Sphinx of Giza",
+    "location": "Giza, Egypt",
+    "description": "A limestone statue of a reclining sphinx, a mythical creature with the body of a lion and the head of a human. It stands on the Giza Plateau on the west bank of the Nile in Giza, Egypt."
+  },
+  {
+    "name": "Karnak Temple Complex",
+    "location": "Luxor, Egypt",
+    "description": "A vast open-air museum and the second largest ancient religious site in the world, after Angkor Wat. It is located on the east bank of the Nile River in Luxor, Egypt."
+  },
+  {
+    "name": "Parthenon",
+    "location": "Athens, Greece",
+    "description": "A former temple on the Athenian Acropolis, Greece, dedicated to the goddess Athena, whom the people of Athens considered their patron."
+  },
+  {
+    "name": "Acropolis of Athens",
+    "location": "Athens, Greece",
+    "description": "An ancient citadel located on a rocky outcrop above the city of Athens and contains the remains of several ancient buildings of great architectural and historic significance, the most famous being the Parthenon."
+  },
+  {
+    "name": "Delphi",
+    "location": "Phocis, Greece",
+    "description": "An ancient sanctuary that served as the seat of Pythia, the main oracle who was consulted about important decisions throughout the ancient classical world. It is a UNESCO World Heritage Site."
+  },
+  {
+    "name": "Stonehenge",
+    "location": "Wiltshire, England, UK",
+    "description": "A prehistoric monument in Wiltshire, England, consisting of a ring of standing stones, each around 13 feet (4.0 m) high, 7 feet (2.1 m) wide and weighing around 25 tons."
+  },
+  {
+    "name": "Buckingham Palace",
+    "location": "London, England, UK",
+    "description": "The London residence and administrative headquarters of the monarch of the United Kingdom."
+  },
+  {
+    "name": "Westminster Abbey",
+    "location": "London, England, UK",
+    "description": "A large, Gothic abbey church in the City of Westminster, London, England, traditionally the place of coronation and burial for English and, later, British monarchs."
+  },
+  {
+    "name": "Sagrada Familia",
+    "location": "Barcelona, Spain",
+    "description": "A large unfinished Roman Catholic minor basilica in the Eixample district of Barcelona, Catalonia, Spain. Designed by Catalan architect Antoni Gaudí, its construction began in 1882."
+  },
+  {
+    "name": "Alhambra",
+    "location": "Granada, Spain",
+    "description": "A palace and fortress complex located in Granada, Andalusia, Spain. It was originally constructed as a small fortress in AD 889 on the remains of a Roman fortification."
+  },
+  {
+    "name": "Machu Picchu",
+    "location": "Cusco Region, Peru",
+    "description": "An ancient Inca citadel located high in the Andes Mountains in Peru, above the Urubamba River valley. Built in the 15th century and later abandoned, it is renowned for its sophisticated dry-stone construction."
+  },
+  {
+    "name": "Sacsayhuaman",
+    "location": "Cusco, Peru",
+    "description": "A citadel on the northern outskirts of the city of Cusco, Peru, the historic capital of the Inca Empire. It is known for its massive, intricately carved dry-stone walls."
+  },
+  {
+    "name": "Chichen Itza",
+    "location": "Yucatán, Mexico",
+    "description": "A large pre-Columbian city built by the Maya people. It is a UNESCO World Heritage Site and one of the New Seven Wonders of the World."
+  },
+  {
+    "name": "Teotihuacan",
+    "location": "State of Mexico, Mexico",
+    "description": "An ancient Mesoamerican city located in a sub-valley of the Valley of Mexico, containing some of the largest Mesoamerican pyramids built in the pre-Columbian Americas."
+  },
+  {
+    "name": "Humayun's Tomb",
+    "location": "Delhi, India",
+    "description": "The tomb of the Mughal Emperor Humayun in Delhi, India. The tomb was commissioned by Humayun's first wife and chief consort, Empress Bega Begum, in 1558."
+  },
+  {
+    "name": "Red Fort",
+    "location": "Delhi, India",
+    "description": "A historic fort in the city of Delhi in India that served as the main residence of the Mughal emperors. It was built by Emperor Shah Jahan in the mid-17th century."
+  },
+  {
+    "name": "Louvre Museum",
+    "location": "Paris, France",
+    "description": "The world's largest art museum and a historic monument in Paris, France. It is the home of the Mona Lisa."
+  },
+  {
+    "name": "Sydney Opera House",
+    "location": "Sydney, Australia",
+    "description": "A multi-venue performing arts centre in Sydney, New South Wales, Australia. It is one of the 20th century's most famous and distinctive buildings and a UNESCO World Heritage Site."
+  },
+  {
+    "name": "Christ the Redeemer",
+    "location": "Rio de Janeiro, Brazil",
+    "description": "An Art Deco statue of Jesus Christ in Rio de Janeiro, Brazil, created by French sculptor Paul Landowski and built by Brazilian engineer Heitor da Silva Costa, in collaboration with French engineer Albert Caquot. It is 30 metres (98 ft) tall, excluding its 8-metre (26 ft) pedestal."
+  },
+  {
+    "name": "Forbidden City",
+    "location": "Beijing, China",
+    "description": "A palace complex in Dongcheng District, Beijing, China, which was the former Chinese imperial palace from the Ming dynasty to the end of the Qing dynasty."
   }
 ]
