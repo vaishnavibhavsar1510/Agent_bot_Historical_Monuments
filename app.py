@@ -30,6 +30,7 @@ for k, v in {
     "last_monument_query": None,
     "user_input": None,
     "awaiting_user_choice": False, # NEW: for yes/no responses
+    "query_history": [], # Initialize query_history
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -43,16 +44,29 @@ def bubble(role: str, text: str):
 def main() -> None:
     st.title("🏛️ Historical Monument Agent")
 
+    # Ensure all messages in session state are LangChain BaseMessage objects
+    # This handles cases where previous sessions might have stored dicts
+    cleaned_messages = []
+    for msg in st.session_state.messages:
+        if isinstance(msg, (HumanMessage, AIMessage)):
+            cleaned_messages.append(msg)
+        elif isinstance(msg, dict):
+            if msg.get("role") == "user":
+                cleaned_messages.append(HumanMessage(content=msg.get("content", "")))
+            elif msg.get("role") == "assistant":
+                cleaned_messages.append(AIMessage(content=msg.get("content", "")))
+    st.session_state.messages = cleaned_messages
+
     # 1) greet on first load
     if not st.session_state.messages:
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": "Hey there 👋  Ask me about any historical monument!"
-        })
+        st.session_state.messages.append(
+            AIMessage(content="Hey there 👋  Ask me about any historical monument!")
+        )
 
     # 2) replay history
     for m in st.session_state.messages:
-        bubble(m["role"], m["content"])
+        # Access content and type directly from the BaseMessage object
+        bubble(m.type, m.content)
 
     # 3) free-text input (hidden while OTP form showing)
     fresh_text = None
@@ -62,8 +76,9 @@ def main() -> None:
 
     if fresh_text:
         st.session_state.user_input = fresh_text
-        # Add user message to history. This will be consumed by LangGraph.
-        st.session_state.messages.append({"role": "user", "content": fresh_text})
+        # Add user message as a HumanMessage object
+        st.session_state.messages.append(HumanMessage(content=fresh_text))
+        st.session_state.query_history.append(fresh_text) # Append current user input to query_history
         bubble("user", fresh_text)
 
     # 4) OTP form
@@ -83,10 +98,7 @@ def main() -> None:
                     last_monument_query=None,
                     user_input=None,
                     awaiting_user_choice=False,
-                    messages=[{ # Reset messages to initial greeting
-                        "role": "assistant",
-                        "content": "Email verification cancelled. How else can I help?"
-                    }]
+                    messages=[AIMessage(content="Email verification cancelled. How else can I help?")] # Reset messages to initial greeting
                 )
                 st.rerun()
             if verify and otp_code:
@@ -95,28 +107,22 @@ def main() -> None:
     # 5) Process user input through LangGraph
     # Only run LangGraph if there's new user input or if we are in an OTP flow
     if st.session_state.user_input is not None or st.session_state.awaiting_otp:
-        # Convert st.session_state.messages to LangChain format for ChatState
-        langchain_messages = []
-        for msg_dict in st.session_state.messages:
-            if msg_dict["role"] == "user":
-                langchain_messages.append(HumanMessage(content=msg_dict["content"]))
-            elif msg_dict["role"] == "assistant":
-                langchain_messages.append(AIMessage(content=msg_dict["content"]))
-
+        # Directly use st.session_state.messages as it now contains LangChain message objects
         current_chat_state = ChatState(
-            messages=langchain_messages,
+            messages=st.session_state.messages,
             user_input=st.session_state.user_input,
             awaiting_otp=st.session_state.awaiting_otp,
             email=st.session_state.email,
             otp_attempts=st.session_state.otp_attempts,
             last_monument_query=st.session_state.last_monument_query,
             initial_response_sent=(len(st.session_state.messages) > 0), # True if messages exist
-            awaiting_user_choice=st.session_state.awaiting_user_choice
+            awaiting_user_choice=st.session_state.awaiting_user_choice,
+            query_history=st.session_state.query_history # Pass query_history from session state
         )
 
         # Invoke the LangGraph
         with st.spinner("Thinking..."):
-            result_state_dict = compiled_chat_graph.invoke(current_chat_state.model_dump())
+            result_state_dict = compiled_chat_graph.invoke(current_chat_state)
             result_state = ChatState.model_validate(result_state_dict)
 
         # Update Streamlit session state from LangGraph result
@@ -126,10 +132,11 @@ def main() -> None:
         st.session_state.otp_attempts = result_state.otp_attempts
         st.session_state.last_monument_query = result_state.last_monument_query
         st.session_state.awaiting_user_choice = result_state.awaiting_user_choice
+        st.session_state.query_history = result_state.query_history # Update query_history in session state
 
         # Add bot's response to messages if available and not already added
-        if result_state.response and not any(m["content"] == result_state.response and m["role"] == "assistant" for m in st.session_state.messages):
-            st.session_state.messages.append({"role": "assistant", "content": result_state.response})
+        if result_state.response and not any(m.content == result_state.response and m.type == "assistant" for m in st.session_state.messages):
+            st.session_state.messages.append(AIMessage(content=result_state.response))
 
         # Re-run the app to update UI based on new state
         st.rerun()

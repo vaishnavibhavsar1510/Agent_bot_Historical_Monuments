@@ -8,7 +8,7 @@ from typing import Optional, Union, List, Dict
 import redis
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.app.chat import router as chat_router          # (keep if you still expose /chat/* sub-routes)
 from backend.app.config import settings
@@ -52,6 +52,7 @@ class ChatRequest(BaseModel):
     user_input: Optional[str] = None
     last_monument_query: Optional[str] = None
     initial_response_sent: bool = False
+    query_history: List[str] = Field(default_factory=list)
 
 # ────────────────────────── Helper (de)serialisers ──────────────────────────
 def _dump_state(state: ChatState) -> str:
@@ -89,7 +90,7 @@ async def chat_query(request: QueryRequest):
     redis_key = f"chat_state:{session_id}"
 
     # 2) fetch previous ChatState (if any)
-    state = _load_state(redis_client.get(redis_key)) or ChatState(messages=[], user_input=None, initial_response_sent=False)
+    state = _load_state(redis_client.get(redis_key)) or ChatState(messages=[], user_input=None, initial_response_sent=False, query_history=[])
 
     # 3) inject current user message
     state.user_input = request.user_query
@@ -134,7 +135,8 @@ async def chat(request: ChatRequest):
             awaiting_otp=request.awaiting_otp,
             email=request.email,
             last_monument_query=request.last_monument_query,
-            initial_response_sent=request.initial_response_sent
+            initial_response_sent=request.initial_response_sent,
+            query_history=request.query_history
         )
         
         # Process the chat

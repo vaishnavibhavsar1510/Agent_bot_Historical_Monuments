@@ -148,5 +148,61 @@
     "name": "Forbidden City",
     "location": "Beijing, China",
     "description": "A palace complex in Dongcheng District, Beijing, China, which was the former Chinese imperial palace from the Ming dynasty to the end of the Qing dynasty."
+  },
+
+  {
+    "name": "Petra",
+    "location": "Ma'an Governorate, Jordan",
+    "description": "A historical and archaeological city famous for its rock-cut architecture and water conduit system. Petra is also called the 'Rose City' due to the color of the stone and is a UNESCO World Heritage Site."
+  },
+  {
+    "name": "Neuschwanstein Castle",
+    "location": "Bavaria, Germany",
+    "description": "A 19th-century Romanesque Revival palace commissioned by Ludwig II of Bavaria. The castle served as the inspiration for Disney's Sleeping Beauty Castle."
+  },
+  {
+    "name": "Hagia Sophia",
+    "location": "Istanbul, Turkey",
+    "description": "A former Greek Orthodox Christian basilica, later an Ottoman imperial mosque and now a mosque again. It is famed for its massive dome and historical significance."
+  },
+  {
+    "name": "Bran Castle",
+    "location": "Bran, Romania",
+    "description": "Often referred to as 'Dracula’s Castle', Bran Castle is a national monument and landmark in Romania associated with the Dracula legend."
+  },
+  {
+    "name": "Burj Khalifa",
+    "location": "Dubai, United Arab Emirates",
+    "description": "Currently the tallest building in the world, standing at 828 meters (2,717 feet). It features a unique design and is a symbol of modern architecture and engineering."
+  },
+  {
+    "name": "CN Tower",
+    "location": "Toronto, Canada",
+    "description": "A 553.3 m-high concrete communications and observation tower. Once the world's tallest freestanding structure, it's a symbol of Canada and a major tourist attraction."
+  },
+  {
+    "name": "Mount Rushmore",
+    "location": "South Dakota, United States, US",
+    "description": "A massive sculpture carved into Mount Rushmore that features the 60-foot faces of four U.S. presidents: George Washington, Thomas Jefferson, Theodore Roosevelt, and Abraham Lincoln."
+  },
+  {
+    "name": "Moai Statues of Easter Island",
+    "location": "Easter Island, Chile",
+    "description": "Monolithic human figures carved by the Rapa Nui people between 1250 and 1500 CE. The statues are known for their oversized heads and cultural significance."
+  },
+  {
+    "name": "Blue Mosque (Sultan Ahmed Mosque)",
+    "location": "Istanbul, Turkey",
+    "description": "A historic mosque famous for its blue tiles surrounding its interior walls. It is still used as a mosque and is a major tourist attraction."
+  },
+  {
+    "name": "Table Mountain",
+    "location": "Cape Town, South Africa",
+    "description": "A flat-topped mountain forming a prominent landmark overlooking Cape Town. It is a significant tourist attraction with a cableway and hiking trails."
   }
+  
+  
+  
+
+
 ]

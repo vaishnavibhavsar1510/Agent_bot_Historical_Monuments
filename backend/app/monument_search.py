@@ -15,6 +15,12 @@ import streamlit as st
 from langchain.chains import RetrievalQA
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
+from langchain.chains import (
+    create_history_aware_retriever,
+    create_retrieval_chain,
+)
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # New imports for conversational memory
 from langchain.memory import ConversationBufferMemory
@@ -58,34 +64,46 @@ def _build_qa_chain() -> ConversationalRetrievalChain:
     )
     retriever = vs.as_retriever()
 
-    # Initialize ConversationBufferMemory
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-
-    # Initialize ChatOpenAI instance
     llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, api_key=key)
 
-    # Custom prompt for the ConversationalRetrievalChain's combine_docs_chain
-    system_template = """You are an AI assistant specialized in historical monuments. Given the following conversation and a follow-up question, answer the question concisely and accurately based ONLY on the provided context. If the question refers to 'them' or 'it', infer the specific monument(s) from the chat history and answer strictly about those. Do NOT mention monuments or locations not explicitly discussed or relevant to the immediate context. If the question is about visiting multiple places, provide a realistic assessment based on travel times and locations. If you cannot answer the question from the given context, say 'I couldn't find specific information for that query within the current conversation scope.'
-
-Chat History:
-{chat_history}
-Question: {question}
-Context: {context}
-Answer:"""
-
-    messages = [
-        SystemMessagePromptTemplate.from_template(system_template),
-        HumanMessagePromptTemplate.from_template("{question}"),
-    ]
-    qa_prompt = ChatPromptTemplate.from_messages(messages)
-
-    # Use ConversationalRetrievalChain with custom prompt for combine_docs_chain
-    return ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        memory=memory,
-        combine_docs_chain_kwargs={"prompt": qa_prompt} # Pass the custom prompt here
+    # 1. Contextualize question
+    contextualize_q_system_prompt = (
+        "Given a chat history and the latest user question "
+        "which might reference context in the chat history, "
+        "formulate a standalone question which can be understood "
+        "without the chat history. Do NOT answer the question, just "
+        "reformulate it if needed and otherwise return it as is. "
+        "If the user is asking for 'more places' or similar, assume they are asking for more monuments in the last mentioned location."
     )
+    contextualize_q_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", contextualize_q_system_prompt),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ]
+    )
+    history_aware_retriever = create_history_aware_retriever(
+        llm, retriever, contextualize_q_prompt
+    )
+
+    # 2. Answer question
+    qa_system_prompt = (
+        "You are an AI assistant specialized in historical monuments. Use "
+        "the following pieces of retrieved context to answer the "
+        "question. If you don't know the answer, just say that you "
+        "don't know. Use three sentences maximum and keep the answer "
+        "concise. If the question refers to 'them' or 'it', infer the specific monument(s) from the chat history and answer strictly about those. Do NOT mention monuments or locations not explicitly discussed or relevant to the immediate context. If the question is about visiting multiple places, provide a realistic assessment based on travel times and locations.\n\nContext: {context}"
+    )
+    qa_prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", qa_system_prompt),
+            MessagesPlaceholder("chat_history"), # This is important to pass the history to the final QA chain
+            ("human", "{input}"),
+        ]
+    )
+    question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+
+    return create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
 # ── Public helper for Streamlit UI ──────────────────────────────────────────
 def answer_monument_query(query: str, chat_history: list) -> str | None:
@@ -95,23 +113,16 @@ def answer_monument_query(query: str, chat_history: list) -> str | None:
     """
     qa_chain = _build_qa_chain()
 
-    try:
-        # Pass chat_history to the conversational chain
-        result = qa_chain.invoke({"question": query, "chat_history": chat_history})
-    except TypeError:
-        result = qa_chain.invoke({"question": query, "chat_history": chat_history})
+    # The new chain expects a dictionary with 'input' and 'chat_history'
+    result = qa_chain.invoke({"input": query, "chat_history": chat_history})
 
     response_text = ""
-    if isinstance(result, dict):
-        for k in ("result", "output_text", "answer"):
-            if isinstance(result.get(k), str):
-                response_text = result[k]
-                break
-        if not response_text:
-            response_text = str(result)
+    # The output structure of create_retrieval_chain is {'input': ..., 'chat_history': ..., 'answer': ..., 'context': ...}
+    if isinstance(result, dict) and "answer" in result:
+        response_text = result["answer"]
     else:
         response_text = str(result)
-
+    
     # Check for common "no information" phrases that indicate a lack of specific match
     no_info_patterns = [
         r"I don't have information",
